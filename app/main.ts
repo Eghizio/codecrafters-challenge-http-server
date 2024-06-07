@@ -1,6 +1,11 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
 
+const parseArgs = () => {
+  const args = process.argv.slice(2);
+  console.log({ args });
+};
+
 const CRLF = `\r\n`;
 const LINE_END = CRLF;
 const HEADERS_END = CRLF.repeat(2);
@@ -126,6 +131,8 @@ const createResponse = async ({
     }
   }
 };
+
+parseArgs();
 
 const server = net.createServer((socket) => {
   socket.on("connect", () => {
