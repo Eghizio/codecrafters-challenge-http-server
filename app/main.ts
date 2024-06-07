@@ -40,7 +40,11 @@ const parseData = (data: Buffer) => {
 
 type Incoming = ReturnType<typeof parseData>;
 
-const buildResponse = (status: string, headers: string, body: any): string => {
+const buildResponse = (
+  status: string,
+  headers?: string,
+  body?: any
+): string => {
   if (!headers && !body) return `${status}${HEADERS_END}`;
   if (!headers) return `${status}${HEADERS_END}${body}`;
 
@@ -80,6 +84,10 @@ const createResponse = ({ request: { requestTarget }, headers }: Incoming) => {
 };
 
 const server = net.createServer((socket) => {
+  socket.on("connect", () => {
+    socket.write(Buffer.from(buildResponse(HTTP_STATUS.OK)));
+  });
+
   socket.on("data", (data) => {
     const incoming = parseData(data);
     const response = createResponse(incoming);
