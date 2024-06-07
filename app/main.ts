@@ -1,13 +1,13 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
 
-const CRLF = `\r\n`;
-const LINE_END = CRLF;
-const HEADERS_END = CRLF.repeat(2);
+const LINE_END = `\r\n`; // CRLF
+const HEADERS_END = `\r\n\r\n`;
 
 const HTTP_STATUS = {
   OK: `HTTP/1.1 200 OK`,
   NOT_FOUND: `HTTP/1.1 404 Not Found`,
+  CREATED: `HTTP/1.1 201 Created`,
 } as const;
 
 const parseRequest = (rawRequest: string) => {
@@ -46,7 +46,7 @@ type Headers = Record<string, string>;
 const serializeHeaders = (headers: Headers): string => {
   return Object.entries(headers)
     .reduce((serialized, [header, value]) => {
-      return `${serialized}${CRLF}${header}: ${value}`;
+      return `${serialized}${LINE_END}${header}: ${value}`;
     }, "")
     .trim();
 };
@@ -69,8 +69,9 @@ const buildResponse = (
 };
 
 const createResponse = async ({
-  request: { requestTarget },
+  request: { httpMethod, requestTarget },
   headers,
+  body,
 }: Incoming) => {
   if (requestTarget.startsWith("/echo/")) {
     const body = requestTarget.replace("/echo/", "");
@@ -88,26 +89,40 @@ const createResponse = async ({
 
     const filePath = `${directory}${fileName}`;
 
-    const fileExists = await fs
-      .access(filePath)
-      .then(() => true)
-      .catch(() => false);
+    switch (httpMethod) {
+      case "GET": {
+        const fileExists = await fs
+          .access(filePath)
+          .then(() => true)
+          .catch(() => false);
 
-    if (!fileExists) {
-      return buildResponse(HTTP_STATUS.NOT_FOUND);
+        if (!fileExists) {
+          return buildResponse(HTTP_STATUS.NOT_FOUND);
+        }
+
+        const bytes = (await fs.stat(filePath)).size;
+        const contents = await fs.readFile(filePath);
+
+        return buildResponse(
+          HTTP_STATUS.OK,
+          {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": bytes.toString(),
+          },
+          contents
+        );
+      }
+
+      case "POST": {
+        await fs.writeFile(filePath, body);
+
+        return buildResponse(HTTP_STATUS.CREATED);
+      }
+
+      default: {
+        return buildResponse(HTTP_STATUS.NOT_FOUND);
+      }
     }
-
-    const bytes = (await fs.stat(filePath)).size;
-    const contents = await fs.readFile(filePath);
-
-    return buildResponse(
-      HTTP_STATUS.OK,
-      {
-        "Content-Type": "application/octet-stream",
-        "Content-Length": bytes.toString(),
-      },
-      contents
-    );
   }
 
   switch (requestTarget) {
