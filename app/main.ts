@@ -44,9 +44,11 @@ type Status = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
 type Headers = Record<string, string>;
 
 const serializeHeaders = (headers: Headers): string => {
-  return Object.entries(headers).reduce((serialized, [header, value]) => {
-    return `${serialized}${CRLF}${header}: ${value}`;
-  }, "");
+  return Object.entries(headers)
+    .reduce((serialized, [header, value]) => {
+      return `${serialized}${CRLF}${header}: ${value}`;
+    }, "")
+    .trim();
 };
 
 const buildResponse = (
@@ -81,7 +83,7 @@ const createResponse = async ({
   }
 
   if (requestTarget.startsWith("/files/")) {
-    const directory = process.argv.slice(2)[1];
+    const directory = process.argv.slice(2)[1] || "/tmp/";
     const fileName = requestTarget.replace("/files/", "");
 
     const filePath = `${directory}${fileName}`;
