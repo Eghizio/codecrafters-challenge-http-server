@@ -129,10 +129,6 @@ const createResponse = async ({
 };
 
 const server = net.createServer((socket) => {
-  socket.on("connect", () => {
-    socket.write(Buffer.from(buildResponse(HTTP_STATUS.OK)));
-  });
-
   socket.on("data", async (data) => {
     const incoming = parseData(data);
     const response = await createResponse(incoming);
@@ -141,6 +137,10 @@ const server = net.createServer((socket) => {
 
     socket.write(Buffer.from(response));
     socket.end();
+  });
+
+  socket.on("connect", () => {
+    socket.write(Buffer.from(buildResponse(HTTP_STATUS.OK)));
   });
 });
 
