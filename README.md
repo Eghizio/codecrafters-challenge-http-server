@@ -1,5 +1,7 @@
 [![progress-banner](https://backend.codecrafters.io/progress/http-server/194f3fe0-cb6e-423a-a778-b11431522c5b)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
 
+`TODO: Refactor code to something managable and neat ;)`
+
 This is a starting point for TypeScript solutions to the
 ["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
 
