@@ -94,7 +94,7 @@ const createResponse = async ({
           "Content-Encoding": "gzip",
           "Content-Length": encodedBody.length.toString(),
         },
-        encodedBody
+        encodedBody.toString("hex")
       );
     }
 
