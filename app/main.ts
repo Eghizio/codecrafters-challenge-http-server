@@ -1,11 +1,6 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
 
-const parseArgs = () => {
-  const args = process.argv.slice(2);
-  console.log({ args });
-};
-
 const CRLF = `\r\n`;
 const LINE_END = CRLF;
 const HEADERS_END = CRLF.repeat(2);
@@ -86,9 +81,10 @@ const createResponse = async ({
   }
 
   if (requestTarget.startsWith("/files/")) {
+    const directory = process.argv.slice(2)[1];
     const fileName = requestTarget.replace("/files/", "");
 
-    const filePath = `/tmp/${fileName}`;
+    const filePath = `${directory}${fileName}`;
 
     const fileExists = await fs
       .access(filePath)
@@ -131,8 +127,6 @@ const createResponse = async ({
     }
   }
 };
-
-parseArgs();
 
 const server = net.createServer((socket) => {
   socket.on("connect", () => {
