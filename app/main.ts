@@ -10,6 +10,8 @@ const HTTP_STATUS = {
   CREATED: `HTTP/1.1 201 Created`,
 } as const;
 
+const ACCEPTED_ENCODINGS = ["gzip"];
+
 const parseRequest = (rawRequest: string) => {
   const [httpMethod, requestTarget, httpVersion] = rawRequest.split(" ");
   return { httpMethod, requestTarget, httpVersion };
@@ -76,9 +78,15 @@ const createResponse = async ({
   if (requestTarget.startsWith("/echo/")) {
     const body = requestTarget.replace("/echo/", "");
 
+    const encoding = headers["Accept-Encoding"];
+    const isValidEncoding = ACCEPTED_ENCODINGS.includes(encoding);
+
     return buildResponse(
       HTTP_STATUS.OK,
-      { "Content-Type": "text/plain" },
+      {
+        "Content-Type": "text/plain",
+        ...(isValidEncoding && { "Content-Encoding": encoding }),
+      },
       body
     );
   }
