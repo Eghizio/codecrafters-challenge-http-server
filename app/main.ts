@@ -5,8 +5,8 @@ const LINE_END = CRLF;
 const HEADERS_END = CRLF.repeat(2);
 
 const HTTP_STATUS = {
-  OK: `HTTP/1.1 200 OK\r\n\r\n`,
-  NOT_FOUND: `HTTP/1.1 404 Not Found\r\n\r\n`,
+  OK: `HTTP/1.1 200 OK`,
+  NOT_FOUND: `HTTP/1.1 404 Not Found`,
 };
 
 const parseRequest = (rawRequest: string) => {
@@ -62,9 +62,9 @@ const createResponse = (requestTarget: string) => {
 
   switch (requestTarget) {
     case "/":
-      return HTTP_STATUS.OK;
+      return buildResponse(HTTP_STATUS.OK, "", "");
     default:
-      return HTTP_STATUS.NOT_FOUND;
+      return buildResponse(HTTP_STATUS.NOT_FOUND, "", "");
   }
 };
 
@@ -75,6 +75,7 @@ const server = net.createServer((socket) => {
     } = parseData(data);
 
     const response = createResponse(requestTarget);
+    console.log({ response });
 
     socket.write(Buffer.from(response));
     socket.end();
