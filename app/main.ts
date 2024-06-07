@@ -45,6 +45,7 @@ const parseData = (data: Buffer) => {
 type Incoming = ReturnType<typeof parseData>;
 type Status = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
 type Headers = Record<string, string>;
+type Body = string | Buffer;
 
 const serializeHeaders = (headers: Headers): string => {
   return Object.entries(headers)
@@ -54,21 +55,19 @@ const serializeHeaders = (headers: Headers): string => {
     .trim();
 };
 
-const buildResponse = (
-  status: Status,
-  headers?: Headers,
-  body?: any
-): string => {
-  if (!headers && !body) return `${status}${HEADERS_END}`;
-  if (!headers) return `${status}${HEADERS_END}${body}`;
+const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
+  if (!headers && !body) return { response: `${status}${HEADERS_END}` };
+  if (!headers) return { response: `${status}${HEADERS_END}`, body };
 
-  if (body && !headers["Content-Length"]) {
-    headers = { ...headers, "Content-Length": body.length };
-  }
+  const serializedHeaders = serializeHeaders({
+    ...(body && { "Content-Length": body.length.toString() }),
+    ...headers,
+  });
 
-  const serializedHeaders = serializeHeaders(headers);
-
-  return `${status}${LINE_END}${serializedHeaders}${HEADERS_END}${body}`;
+  return {
+    response: `${status}${LINE_END}${serializedHeaders}${HEADERS_END}`,
+    body,
+  };
 };
 
 const createResponse = async ({
@@ -94,7 +93,7 @@ const createResponse = async ({
           "Content-Encoding": "gzip",
           "Content-Length": encodedBody.length.toString(),
         },
-        encodedBody.toString("hex")
+        encodedBody
       );
     }
 
@@ -173,16 +172,19 @@ const createResponse = async ({
 const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
-    const response = await createResponse(incoming);
+    const { response, body } = await createResponse(incoming);
 
-    console.log({ incoming, response });
+    console.log({ incoming, response, body });
 
     socket.write(Buffer.from(response));
+    if (body) socket.write(Buffer.from(body));
     socket.end();
   });
 
   socket.on("connect", () => {
-    socket.write(Buffer.from(buildResponse(HTTP_STATUS.OK)));
+    const { response, body } = buildResponse(HTTP_STATUS.OK);
+    socket.write(Buffer.from(response));
+    if (body) socket.write(Buffer.from(body));
   });
 });
 
