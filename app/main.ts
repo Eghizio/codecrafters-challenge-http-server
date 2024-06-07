@@ -1,5 +1,6 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
+import zlib from "node:zlib";
 
 const LINE_END = `\r\n`; // CRLF
 const HEADERS_END = `\r\n\r\n`;
@@ -78,21 +79,30 @@ const createResponse = async ({
   if (requestTarget.startsWith("/echo/")) {
     const body = requestTarget.replace("/echo/", "");
 
-    // take first
     const encoding = headers["Accept-Encoding"]
       ?.split(", ")
       .filter((enc) => ACCEPTED_ENCODINGS.includes(enc))
-      .at(0);
+      .at(0); // take first
 
-    const isValidEncoding = encoding
-      ? ACCEPTED_ENCODINGS.includes(encoding)
-      : false;
+    if (encoding === "gzip") {
+      const encodedBody = zlib.gzipSync(Buffer.from(body));
+
+      return buildResponse(
+        HTTP_STATUS.OK,
+        {
+          "Content-Type": "text/plain",
+          "Content-Encoding": "gzip",
+          "Content-Length": encodedBody.length.toString(),
+        },
+        encodedBody
+      );
+    }
 
     return buildResponse(
       HTTP_STATUS.OK,
       {
         "Content-Type": "text/plain",
-        ...(isValidEncoding && { "Content-Encoding": encoding }),
+        ...(encoding && { "Content-Encoding": encoding }),
       },
       body
     );
