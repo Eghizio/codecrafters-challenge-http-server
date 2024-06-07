@@ -78,7 +78,10 @@ const createResponse = async ({
   if (requestTarget.startsWith("/echo/")) {
     const body = requestTarget.replace("/echo/", "");
 
-    const encoding = headers["Accept-Encoding"];
+    const encodings = headers["Accept-Encoding"].split(", ");
+    const [encoding, ...tail] = encodings.filter((enc) =>
+      ACCEPTED_ENCODINGS.includes(enc)
+    );
     const isValidEncoding = ACCEPTED_ENCODINGS.includes(encoding);
 
     return buildResponse(
