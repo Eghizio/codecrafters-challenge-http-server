@@ -1,31 +1,20 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
-import { LINE_END, HEADERS_END, parseLines } from "./shared";
-import { TheRequest } from "./request";
+import {
+  LINE_END,
+  HEADERS_END,
+  HTTP_METHOD,
+  HTTP_STATUS,
+  type Status,
+  type Headers,
+  type Body,
+  type Incoming,
+  parseData,
+  Outgoing,
+} from "./shared";
 import { TheHeaders } from "./headers";
-import { TheBody } from "./body";
 import { Encoder } from "./encoder";
-
-const HTTP_STATUS = {
-  OK: `HTTP/1.1 200 OK`,
-  NOT_FOUND: `HTTP/1.1 404 Not Found`,
-  CREATED: `HTTP/1.1 201 Created`,
-} as const;
-
-const parseData = (data: Buffer) => {
-  const [startLine, headerLines, bodyLines] = parseLines(data.toString());
-
-  return {
-    request: TheRequest.parseRequest(startLine),
-    headers: TheHeaders.parseHeaders(headerLines),
-    body: TheBody.parseBody(bodyLines),
-  };
-};
-
-type Incoming = ReturnType<typeof parseData>;
-type Status = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
-type Headers = Record<string, string>;
-type Body = string | Buffer;
+import { type ResponseBuilder, Router } from "./router";
 
 const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
   const serializedHeaders = TheHeaders.serializeHeaders({
@@ -38,6 +27,87 @@ const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
     body,
   };
 };
+
+const responseBuilder: ResponseBuilder = (outgoing) =>
+  buildResponse(
+    outgoing?.status ?? HTTP_STATUS.NOT_FOUND,
+    outgoing?.headers,
+    outgoing?.body
+  );
+
+const router = new Router(responseBuilder);
+
+router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
+  const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
+  const encoding = headers["Accept-Encoding"];
+  const body = Encoder.encode(encoding, param);
+
+  return {
+    status: HTTP_STATUS.OK,
+    headers: {
+      "Content-Type": "text/plain",
+      "Content-Length": body.length.toString(),
+      ...(Encoder.isSupportedEncoding(encoding) && {
+        "Content-Encoding": encoding,
+      }),
+    },
+    body,
+  };
+});
+
+router.get("/files/:filename", async ({ request: { requestTarget } }) => {
+  const directory = process.argv.slice(2)[1] || "/tmp/";
+  const fileName = requestTarget.replace("/files/", "");
+
+  const filePath = `${directory}${fileName}`;
+
+  const fileExists = await fs
+    .access(filePath)
+    .then(() => true)
+    .catch(() => false);
+
+  if (!fileExists) {
+    return { status: HTTP_STATUS.NOT_FOUND };
+  }
+
+  const bytes = (await fs.stat(filePath)).size;
+  const contents = await fs.readFile(filePath);
+
+  return {
+    status: HTTP_STATUS.OK,
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Length": bytes.toString(),
+    },
+    body: contents,
+  };
+});
+
+router.post(
+  "/files/:filename",
+  async ({ request: { requestTarget }, body }) => {
+    const directory = process.argv.slice(2)[1] || "/tmp/";
+    const fileName = requestTarget.replace("/files/", "");
+
+    const filePath = `${directory}${fileName}`;
+
+    await fs.writeFile(filePath, body);
+
+    return { status: HTTP_STATUS.CREATED };
+  }
+);
+
+router.any("/", () => ({ status: HTTP_STATUS.OK }));
+
+router.any("/user-agent", ({ headers }) => {
+  const body = headers["User-Agent"];
+
+  return {
+    status: HTTP_STATUS.OK,
+    headers: { "Content-Type": "text/plain" },
+    body,
+  };
+});
 
 const createResponse = async ({
   request: { httpMethod, requestTarget },
@@ -59,7 +129,7 @@ const createResponse = async ({
         HTTP_STATUS.OK,
         {
           "Content-Type": "text/plain",
-          "Content-Encoding": "gzip",
+          "Content-Encoding": encoding,
           "Content-Length": encodedBody.length.toString(),
         },
         encodedBody
@@ -83,7 +153,7 @@ const createResponse = async ({
     const filePath = `${directory}${fileName}`;
 
     switch (httpMethod) {
-      case "GET": {
+      case HTTP_METHOD.GET: {
         const fileExists = await fs
           .access(filePath)
           .then(() => true)
@@ -106,7 +176,7 @@ const createResponse = async ({
         );
       }
 
-      case "POST": {
+      case HTTP_METHOD.POST: {
         await fs.writeFile(filePath, body);
 
         return buildResponse(HTTP_STATUS.CREATED);
@@ -125,6 +195,7 @@ const createResponse = async ({
 
     case "/user-agent": {
       const userAgent = headers["User-Agent"];
+
       return buildResponse(
         HTTP_STATUS.OK,
         { "Content-Type": "text/plain" },
@@ -141,7 +212,8 @@ const createResponse = async ({
 const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
-    const { response, body } = await createResponse(incoming);
+    const { response, body } = await router.handle(incoming);
+    // const { response, body } = await createResponse(incoming);
 
     console.log({ incoming, response, body });
 
