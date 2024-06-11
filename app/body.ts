@@ -1,7 +1,11 @@
 import { Encoder, encodings } from "./encodings";
 
 export class TheBody {
-  constructor(private readonly _body: string | Buffer) {}
+  private _body: string | Buffer;
+
+  constructor(bodyLines: string) {
+    this._body = TheBody.parseBody(bodyLines);
+  }
 
   get body() {
     return this._body;
@@ -9,7 +13,8 @@ export class TheBody {
 
   encode(encoding: string): string | Buffer {
     const encoder: Encoder | undefined = encodings[encoding];
-    return encoder ? encoder(this._body) : this._body;
+    this._body = encoder ? encoder(this._body) : this._body;
+    return this._body;
   }
 
   static parseBody = (bodyLines: string) => bodyLines;
