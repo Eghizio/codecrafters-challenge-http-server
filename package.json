@@ -3,12 +3,14 @@
   "description": "Build your own HTTP Server challenge, from CodeCrafters",
   "type": "module",
   "scripts": {
-    "dev": "bun run app/main.ts"
+    "dev": "bun run app/main.ts",
+    "test": "tsx --test app/*.test.ts"
   },
   "dependencies": {
     "async": "^3.2.0"
   },
   "devDependencies": {
-    "@types/node": "^20.14.2"
+    "@types/node": "^20.14.2",
+    "tsx": "^4.15.2"
   }
 }
