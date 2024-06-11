@@ -27,13 +27,13 @@ const buildResponse = ({ status, headers, body }: Outgoing) => {
 const router = new Router();
 
 router.get("/echo/:echo", ({ request, headers }) => {
-  // const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
   const param = request.params["echo"];
 
   const encoding = headers["Accept-Encoding"]
     ?.split(", ")
     .filter(Encoder.isSupportedEncoding)
     .at(0);
+
   const body = encoding ? Encoder.encode(encoding, param) : param;
 
   return {
@@ -49,9 +49,7 @@ router.get("/echo/:echo", ({ request, headers }) => {
 
 router.get("/files/:filename", async ({ request }) => {
   const directory = process.argv.slice(2)[1] || "/tmp/";
-  // const fileName = requestTarget.replace("/files/", "");
   const fileName = request.params["filename"];
-
   const filePath = `${directory}${fileName}`;
 
   const fileExists = await fs
@@ -78,9 +76,7 @@ router.get("/files/:filename", async ({ request }) => {
 
 router.post("/files/:filename", async ({ request, body }) => {
   const directory = process.argv.slice(2)[1] || "/tmp/";
-  // const fileName = requestTarget.replace("/files/", "");
   const fileName = request.params["filename"];
-
   const filePath = `${directory}${fileName}`;
 
   await fs.writeFile(filePath, body);
