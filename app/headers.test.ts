@@ -84,4 +84,38 @@ describe("should ", () => {
       "Content-Type: text/plain\r\nContent-Encoding: gzip\r\nContent-Length: 42"
     );
   });
+
+  test("return single header value if header is present", () => {
+    // Given
+    const headerLines = [
+      "Content-Type: text/plain",
+      "Content-Encoding: gzip",
+      "Content-Length: 42",
+    ];
+
+    // When
+    const contentEncoding = new TheHeaders(headerLines).getHeader(
+      "Content-Encoding"
+    );
+
+    // Then
+    assert.strictEqual(contentEncoding, "gzip");
+  });
+
+  test("return undefined if header is not present", () => {
+    // Given
+    const headerLines = [
+      "Content-Type: text/plain",
+      "Content-Encoding: gzip",
+      "Content-Length: 42",
+    ];
+
+    // When
+    const nonExistingHeader = new TheHeaders(headerLines).getHeader(
+      "Non-Existing-Header"
+    );
+
+    // Then
+    assert.strictEqual(nonExistingHeader, undefined);
+  });
 });

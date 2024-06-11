@@ -11,6 +11,10 @@ export class TheHeaders {
     return this._headers;
   }
 
+  getHeader(headerName: string): string | undefined {
+    return this._headers[headerName];
+  }
+
   toString(): string {
     return TheHeaders.serializeHeaders(this._headers);
   }
