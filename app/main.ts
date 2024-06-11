@@ -3,14 +3,11 @@ import fs from "node:fs/promises";
 import {
   LINE_END,
   HEADERS_END,
-  HTTP_METHOD,
   HTTP_STATUS,
   type Status,
   type Headers,
   type Body,
-  type Incoming,
   parseData,
-  Outgoing,
 } from "./shared";
 import { TheHeaders } from "./headers";
 import { Encoder } from "./encoder";
@@ -39,17 +36,18 @@ const router = new Router(responseBuilder);
 
 router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
   const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
-  const encoding = headers["Accept-Encoding"];
-  const body = Encoder.encode(encoding, param);
+  const encoding = headers["Accept-Encoding"]
+    ?.split(", ")
+    .filter(Encoder.isSupportedEncoding)
+    .at(0);
+  const body = encoding ? Encoder.encode(encoding, param) : param;
 
   return {
     status: HTTP_STATUS.OK,
     headers: {
       "Content-Type": "text/plain",
       "Content-Length": body.length.toString(),
-      ...(Encoder.isSupportedEncoding(encoding) && {
-        "Content-Encoding": encoding,
-      }),
+      ...(encoding && { "Content-Encoding": encoding }),
     },
     body,
   };
@@ -109,105 +107,105 @@ router.any("/user-agent", ({ headers }) => {
   };
 });
 
-const createResponse = async ({
-  request: { httpMethod, requestTarget },
-  headers,
-  body,
-}: Incoming) => {
-  if (requestTarget.startsWith("/echo/")) {
-    const body = requestTarget.replace("/echo/", "");
+// const createResponse = async ({
+//   request: { httpMethod, requestTarget },
+//   headers,
+//   body,
+// }: Incoming) => {
+//   if (requestTarget.startsWith("/echo/")) {
+//     const body = requestTarget.replace("/echo/", "");
 
-    const encoding = headers["Accept-Encoding"]
-      ?.split(", ")
-      .filter((enc) => Encoder.isSupportedEncoding(enc))
-      .at(0); // take first
+//     const encoding = headers["Accept-Encoding"]
+//       ?.split(", ")
+//       .filter((enc) => Encoder.isSupportedEncoding(enc))
+//       .at(0); // take first
 
-    if (encoding) {
-      const encodedBody = Encoder.encode(encoding, body);
+//     if (encoding) {
+//       const encodedBody = Encoder.encode(encoding, body);
 
-      return buildResponse(
-        HTTP_STATUS.OK,
-        {
-          "Content-Type": "text/plain",
-          "Content-Encoding": encoding,
-          "Content-Length": encodedBody.length.toString(),
-        },
-        encodedBody
-      );
-    }
+//       return buildResponse(
+//         HTTP_STATUS.OK,
+//         {
+//           "Content-Type": "text/plain",
+//           "Content-Encoding": encoding,
+//           "Content-Length": encodedBody.length.toString(),
+//         },
+//         encodedBody
+//       );
+//     }
 
-    return buildResponse(
-      HTTP_STATUS.OK,
-      {
-        "Content-Type": "text/plain",
-        ...(encoding && { "Content-Encoding": encoding }),
-      },
-      body
-    );
-  }
+//     return buildResponse(
+//       HTTP_STATUS.OK,
+//       {
+//         "Content-Type": "text/plain",
+//         ...(encoding && { "Content-Encoding": encoding }),
+//       },
+//       body
+//     );
+//   }
 
-  if (requestTarget.startsWith("/files/")) {
-    const directory = process.argv.slice(2)[1] || "/tmp/";
-    const fileName = requestTarget.replace("/files/", "");
+//   if (requestTarget.startsWith("/files/")) {
+//     const directory = process.argv.slice(2)[1] || "/tmp/";
+//     const fileName = requestTarget.replace("/files/", "");
 
-    const filePath = `${directory}${fileName}`;
+//     const filePath = `${directory}${fileName}`;
 
-    switch (httpMethod) {
-      case HTTP_METHOD.GET: {
-        const fileExists = await fs
-          .access(filePath)
-          .then(() => true)
-          .catch(() => false);
+//     switch (httpMethod) {
+//       case HTTP_METHOD.GET: {
+//         const fileExists = await fs
+//           .access(filePath)
+//           .then(() => true)
+//           .catch(() => false);
 
-        if (!fileExists) {
-          return buildResponse(HTTP_STATUS.NOT_FOUND);
-        }
+//         if (!fileExists) {
+//           return buildResponse(HTTP_STATUS.NOT_FOUND);
+//         }
 
-        const bytes = (await fs.stat(filePath)).size;
-        const contents = await fs.readFile(filePath);
+//         const bytes = (await fs.stat(filePath)).size;
+//         const contents = await fs.readFile(filePath);
 
-        return buildResponse(
-          HTTP_STATUS.OK,
-          {
-            "Content-Type": "application/octet-stream",
-            "Content-Length": bytes.toString(),
-          },
-          contents
-        );
-      }
+//         return buildResponse(
+//           HTTP_STATUS.OK,
+//           {
+//             "Content-Type": "application/octet-stream",
+//             "Content-Length": bytes.toString(),
+//           },
+//           contents
+//         );
+//       }
 
-      case HTTP_METHOD.POST: {
-        await fs.writeFile(filePath, body);
+//       case HTTP_METHOD.POST: {
+//         await fs.writeFile(filePath, body);
 
-        return buildResponse(HTTP_STATUS.CREATED);
-      }
+//         return buildResponse(HTTP_STATUS.CREATED);
+//       }
 
-      default: {
-        return buildResponse(HTTP_STATUS.NOT_FOUND);
-      }
-    }
-  }
+//       default: {
+//         return buildResponse(HTTP_STATUS.NOT_FOUND);
+//       }
+//     }
+//   }
 
-  switch (requestTarget) {
-    case "/": {
-      return buildResponse(HTTP_STATUS.OK);
-    }
+//   switch (requestTarget) {
+//     case "/": {
+//       return buildResponse(HTTP_STATUS.OK);
+//     }
 
-    case "/user-agent": {
-      const userAgent = headers["User-Agent"];
+//     case "/user-agent": {
+//       const userAgent = headers["User-Agent"];
 
-      return buildResponse(
-        HTTP_STATUS.OK,
-        { "Content-Type": "text/plain" },
-        userAgent
-      );
-    }
+//       return buildResponse(
+//         HTTP_STATUS.OK,
+//         { "Content-Type": "text/plain" },
+//         userAgent
+//       );
+//     }
 
-    default: {
-      return buildResponse(HTTP_STATUS.NOT_FOUND);
-    }
-  }
-};
+//     default: {
+//       return buildResponse(HTTP_STATUS.NOT_FOUND);
+//     }
+//   }
+// };
 
 const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
