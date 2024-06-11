@@ -1,4 +1,4 @@
-import { Encoder, encodings } from "./Encodings";
+import { Encoder, encodings } from "./encodings";
 
 export class TheBody {
   constructor(private readonly _body: string | Buffer) {}
