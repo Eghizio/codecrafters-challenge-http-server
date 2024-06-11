@@ -1,3 +1,5 @@
+import { LINE_END } from "./shared";
+
 export class TheHeaders {
   private _headers: Record<string, string> = {};
 
@@ -23,7 +25,8 @@ export class TheHeaders {
   static serializeHeaders = (headers: Record<string, string>): string =>
     Object.entries(headers)
       .reduce(
-        (serialized, [header, value]) => `${serialized}\r\n${header}: ${value}`,
+        (serialized, [header, value]) =>
+          `${serialized}${LINE_END}${header}: ${value}`,
         ""
       )
       .trim();
