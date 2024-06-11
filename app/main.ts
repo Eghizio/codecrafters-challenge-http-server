@@ -1,18 +1,16 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
-import zlib from "node:zlib";
 import { LINE_END, HEADERS_END, parseLines } from "./shared";
 import { TheRequest } from "./request";
 import { TheHeaders } from "./headers";
 import { TheBody } from "./body";
+import { Encoder } from "./encoder";
 
 const HTTP_STATUS = {
   OK: `HTTP/1.1 200 OK`,
   NOT_FOUND: `HTTP/1.1 404 Not Found`,
   CREATED: `HTTP/1.1 201 Created`,
 } as const;
-
-const ACCEPTED_ENCODINGS = ["gzip"];
 
 const parseData = (data: Buffer) => {
   const [startLine, headerLines, bodyLines] = parseLines(data.toString());
@@ -51,11 +49,11 @@ const createResponse = async ({
 
     const encoding = headers["Accept-Encoding"]
       ?.split(", ")
-      .filter((enc) => ACCEPTED_ENCODINGS.includes(enc))
+      .filter((enc) => Encoder.isSupportedEncoding(enc))
       .at(0); // take first
 
-    if (encoding === "gzip") {
-      const encodedBody = zlib.gzipSync(Buffer.from(body));
+    if (encoding) {
+      const encodedBody = Encoder.encode(encoding, body);
 
       return buildResponse(
         HTTP_STATUS.OK,

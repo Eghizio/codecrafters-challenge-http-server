@@ -1,4 +1,4 @@
-import { Encoder, encodings } from "./encodings";
+import { Encoder } from "./encoder";
 
 export class TheBody {
   private _body: string | Buffer;
@@ -12,8 +12,7 @@ export class TheBody {
   }
 
   encode(encoding: string): string | Buffer {
-    const encoder: Encoder | undefined = encodings[encoding];
-    this._body = encoder ? encoder(this._body) : this._body;
+    this._body = Encoder.encode(encoding, this._body);
     return this._body;
   }
 
