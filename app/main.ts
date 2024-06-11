@@ -10,6 +10,7 @@ import {
 import { TheHeaders } from "./headers";
 import { Encoder } from "./encoder";
 import { Router } from "./router";
+import { Response } from "./response";
 
 // Todo: Change this method, accept outgoing and socket, write partially response.
 const buildResponse = ({ status, headers, body }: Outgoing) => {
@@ -100,19 +101,23 @@ const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
     const outgoing = await router.handle(incoming);
-    const { response, body } = buildResponse(outgoing);
+    // const { response, body } = buildResponse(outgoing);
 
-    console.log({ incoming }, { outgoing }, { response, body });
+    // console.log({ incoming }, { outgoing }, { response, body });
+    console.log({ incoming }, { outgoing });
 
-    socket.write(Buffer.from(response));
-    if (body) socket.write(Buffer.from(body));
-    socket.end();
+    new Response(outgoing).send(socket);
+
+    // socket.write(Buffer.from(response));
+    // if (body) socket.write(Buffer.from(body));
+    // socket.end();
   });
 
   socket.on("connect", () => {
-    const { response, body } = buildResponse({ status: HTTP_STATUS.OK });
-    socket.write(Buffer.from(response));
-    if (body) socket.write(Buffer.from(body));
+    new Response({ status: HTTP_STATUS.OK }).send(socket);
+    // const { response, body } = buildResponse({ status: HTTP_STATUS.OK });
+    // socket.write(Buffer.from(response));
+    // if (body) socket.write(Buffer.from(body));
   });
 });
 
