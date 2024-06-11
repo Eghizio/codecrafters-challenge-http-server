@@ -95,8 +95,6 @@ router.post(
   }
 );
 
-router.any("/", () => ({ status: HTTP_STATUS.OK }));
-
 router.any("/user-agent", ({ headers }) => {
   const body = headers["User-Agent"];
 
@@ -106,6 +104,8 @@ router.any("/user-agent", ({ headers }) => {
     body,
   };
 });
+
+router.any("/", () => ({ status: HTTP_STATUS.OK }));
 
 // const createResponse = async ({
 //   request: { httpMethod, requestTarget },
