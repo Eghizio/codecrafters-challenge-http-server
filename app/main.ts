@@ -4,17 +4,15 @@ import {
   LINE_END,
   HEADERS_END,
   HTTP_STATUS,
-  type Status,
-  type Headers,
-  type Body,
   parseData,
+  type Outgoing,
 } from "./shared";
 import { TheHeaders } from "./headers";
 import { Encoder } from "./encoder";
 import { Router } from "./router";
 
 // Todo: Change this method, accept outgoing and socket, write partially response.
-const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
+const buildResponse = ({ status, headers, body }: Outgoing) => {
   const serializedHeaders = TheHeaders.serializeHeaders({
     ...(body && { "Content-Length": body.length.toString() }),
     ...headers,
@@ -26,14 +24,7 @@ const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
   };
 };
 
-// Todo: Move callback inside the Router to just handle 404. Return outgoing.
-const router = new Router((outgoing) =>
-  buildResponse(
-    outgoing?.status ?? HTTP_STATUS.NOT_FOUND,
-    outgoing?.headers,
-    outgoing?.body
-  )
-);
+const router = new Router();
 
 router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
   const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
@@ -111,9 +102,10 @@ router.any("/", () => ({ status: HTTP_STATUS.OK }));
 const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
-    const { response, body } = await router.handle(incoming);
+    const outgoing = await router.handle(incoming);
+    const { response, body } = buildResponse(outgoing);
 
-    console.log({ incoming, response, body });
+    console.log({ incoming }, { outgoing }, { response, body });
 
     socket.write(Buffer.from(response));
     if (body) socket.write(Buffer.from(body));
@@ -121,7 +113,7 @@ const server = net.createServer((socket) => {
   });
 
   socket.on("connect", () => {
-    const { response, body } = buildResponse(HTTP_STATUS.OK);
+    const { response, body } = buildResponse({ status: HTTP_STATUS.OK });
     socket.write(Buffer.from(response));
     if (body) socket.write(Buffer.from(body));
   });

@@ -1,4 +1,10 @@
-import { Body, HTTP_METHOD, Incoming, Method, Outgoing } from "./shared";
+import {
+  HTTP_METHOD,
+  HTTP_STATUS,
+  type Incoming,
+  type Method,
+  type Outgoing,
+} from "./shared";
 
 type Handler = (incoming: Incoming) => Outgoing | Promise<Outgoing>;
 
@@ -8,15 +14,18 @@ type Route = {
   handler: Handler;
 };
 
-type ResponseBuilder = (outgoing?: Outgoing) => {
-  response: string;
-  body?: Body;
-};
+type ResponseBuilder = (outgoing?: Outgoing) => Outgoing;
 
 export class Router {
   private _routes: Route[] = [];
+  private responseBuilder: ResponseBuilder = (outgoing) => ({
+    ...outgoing,
+    status: outgoing?.status ?? HTTP_STATUS.NOT_FOUND,
+  });
 
-  constructor(private readonly responseBuilder: ResponseBuilder) {}
+  constructor(responseBuilder?: ResponseBuilder) {
+    this.responseBuilder = responseBuilder ?? this.responseBuilder;
+  }
 
   async handle(incoming: Incoming) {
     return this.responseBuilder(await this.resolveRoute(incoming));
