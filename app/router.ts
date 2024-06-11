@@ -54,8 +54,12 @@ export class Router {
   }
 
   private isMatchingPath(path: string, requestTarget: string): boolean {
-    const first = path.split(":").at(0);
-    return first ? requestTarget.startsWith(first) : false;
+    if (path.includes(":")) {
+      const first = path.split(":").at(0);
+      return first ? requestTarget.startsWith(first) : false;
+    }
+
+    return path === requestTarget;
   }
 
   private isMatchingMethod(method: Method, httpMethod: string): boolean {
