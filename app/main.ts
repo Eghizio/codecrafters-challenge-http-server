@@ -2,6 +2,7 @@ import * as net from "node:net";
 import fs from "node:fs/promises";
 import zlib from "node:zlib";
 import { LINE_END, HEADERS_END, parseLines } from "./shared";
+import { TheRequest } from "./request";
 import { TheHeaders } from "./headers";
 import { TheBody } from "./body";
 
@@ -13,16 +14,11 @@ const HTTP_STATUS = {
 
 const ACCEPTED_ENCODINGS = ["gzip"];
 
-const parseRequest = (rawRequest: string) => {
-  const [httpMethod, requestTarget, httpVersion] = rawRequest.split(" ");
-  return { httpMethod, requestTarget, httpVersion };
-};
-
 const parseData = (data: Buffer) => {
   const [startLine, headerLines, bodyLines] = parseLines(data.toString());
 
   return {
-    request: parseRequest(startLine),
+    request: TheRequest.parseRequest(startLine),
     headers: TheHeaders.parseHeaders(headerLines),
     body: TheBody.parseBody(bodyLines),
   };
@@ -34,9 +30,6 @@ type Headers = Record<string, string>;
 type Body = string | Buffer;
 
 const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
-  if (!headers && !body) return { response: `${status}${HEADERS_END}` };
-  if (!headers) return { response: `${status}${HEADERS_END}`, body };
-
   const serializedHeaders = TheHeaders.serializeHeaders({
     ...(body && { "Content-Length": body.length.toString() }),
     ...headers,
