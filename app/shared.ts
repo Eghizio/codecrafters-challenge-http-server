@@ -33,7 +33,7 @@ export const HTTP_METHOD = {
   ANY: "*",
 } as const;
 
-export type ValueOf<T> = T[keyof T];
+type ValueOf<T> = T[keyof T];
 
 export type Incoming = ReturnType<typeof parseData>;
 
