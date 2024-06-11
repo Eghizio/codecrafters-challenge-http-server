@@ -1,9 +1,9 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
 import zlib from "node:zlib";
-
-const LINE_END = `\r\n`; // CRLF
-const HEADERS_END = `\r\n\r\n`;
+import { LINE_END, HEADERS_END, parseLines } from "./shared";
+import { TheHeaders } from "./headers";
+import { TheBody } from "./body";
 
 const HTTP_STATUS = {
   OK: `HTTP/1.1 200 OK`,
@@ -18,28 +18,14 @@ const parseRequest = (rawRequest: string) => {
   return { httpMethod, requestTarget, httpVersion };
 };
 
-const parseHeaders = (rawHeaders: string[]) =>
-  rawHeaders.reduce<Record<string, string>>((headers, rawHeader) => {
-    const [header, value] = rawHeader.split(": ");
-    headers[header] = value;
-    return headers;
-  }, {});
-
-const parseBody = (body: string) => body;
-
-const parseSerializedData = (serialized: string) => {
-  const [requestWithHeaders, rawBody] = serialized.split(HEADERS_END);
-  const [rawRequest, ...rawHeaders] = requestWithHeaders.split(LINE_END);
+const parseData = (data: Buffer) => {
+  const [startLine, headerLines, bodyLines] = parseLines(data.toString());
 
   return {
-    request: parseRequest(rawRequest),
-    headers: parseHeaders(rawHeaders),
-    body: parseBody(rawBody),
+    request: parseRequest(startLine),
+    headers: TheHeaders.parseHeaders(headerLines),
+    body: TheBody.parseBody(bodyLines),
   };
-};
-
-const parseData = (data: Buffer) => {
-  return parseSerializedData(data.toString());
 };
 
 type Incoming = ReturnType<typeof parseData>;
@@ -47,19 +33,11 @@ type Status = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
 type Headers = Record<string, string>;
 type Body = string | Buffer;
 
-const serializeHeaders = (headers: Headers): string => {
-  return Object.entries(headers)
-    .reduce((serialized, [header, value]) => {
-      return `${serialized}${LINE_END}${header}: ${value}`;
-    }, "")
-    .trim();
-};
-
 const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
   if (!headers && !body) return { response: `${status}${HEADERS_END}` };
   if (!headers) return { response: `${status}${HEADERS_END}`, body };
 
-  const serializedHeaders = serializeHeaders({
+  const serializedHeaders = TheHeaders.serializeHeaders({
     ...(body && { "Content-Length": body.length.toString() }),
     ...headers,
   });
