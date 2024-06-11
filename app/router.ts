@@ -6,7 +6,11 @@ import {
   type Outgoing,
 } from "./shared";
 
-type Handler = (incoming: Incoming) => Outgoing | Promise<Outgoing>;
+type IncomingWithParams = Incoming & {
+  request: Incoming["request"] & { params: Record<string, string> };
+};
+
+type Handler = (incoming: IncomingWithParams) => Outgoing | Promise<Outgoing>;
 
 type Route = {
   method: Method;
@@ -59,7 +63,13 @@ export class Router {
     );
 
     if (!route) return;
-    return route.handler(incoming);
+
+    const params = this.parseParams(route.path, requestTarget);
+
+    return route.handler({
+      ...incoming,
+      request: { ...incoming.request, params },
+    });
   }
 
   private isMatchingPath(path: string, requestTarget: string): boolean {
@@ -73,5 +83,16 @@ export class Router {
 
   private isMatchingMethod(method: Method, httpMethod: string): boolean {
     return method === HTTP_METHOD.ANY || method === httpMethod;
+  }
+
+  private parseParams(
+    path: string,
+    requestTarget: string
+  ): Record<string, string> {
+    if (!path.includes(":")) return {};
+
+    const [start, param] = path.split(":");
+
+    return { [param]: requestTarget.slice(start.length) };
   }
 }

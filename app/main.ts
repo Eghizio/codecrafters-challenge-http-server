@@ -26,8 +26,10 @@ const buildResponse = ({ status, headers, body }: Outgoing) => {
 
 const router = new Router();
 
-router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
-  const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
+router.get("/echo/:echo", ({ request, headers }) => {
+  // const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
+  const param = request.params["echo"];
+
   const encoding = headers["Accept-Encoding"]
     ?.split(", ")
     .filter(Encoder.isSupportedEncoding)
@@ -45,9 +47,10 @@ router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
   };
 });
 
-router.get("/files/:filename", async ({ request: { requestTarget } }) => {
+router.get("/files/:filename", async ({ request }) => {
   const directory = process.argv.slice(2)[1] || "/tmp/";
-  const fileName = requestTarget.replace("/files/", "");
+  // const fileName = requestTarget.replace("/files/", "");
+  const fileName = request.params["filename"];
 
   const filePath = `${directory}${fileName}`;
 
@@ -73,19 +76,17 @@ router.get("/files/:filename", async ({ request: { requestTarget } }) => {
   };
 });
 
-router.post(
-  "/files/:filename",
-  async ({ request: { requestTarget }, body }) => {
-    const directory = process.argv.slice(2)[1] || "/tmp/";
-    const fileName = requestTarget.replace("/files/", "");
+router.post("/files/:filename", async ({ request, body }) => {
+  const directory = process.argv.slice(2)[1] || "/tmp/";
+  // const fileName = requestTarget.replace("/files/", "");
+  const fileName = request.params["filename"];
 
-    const filePath = `${directory}${fileName}`;
+  const filePath = `${directory}${fileName}`;
 
-    await fs.writeFile(filePath, body);
+  await fs.writeFile(filePath, body);
 
-    return { status: HTTP_STATUS.CREATED };
-  }
-);
+  return { status: HTTP_STATUS.CREATED };
+});
 
 router.any("/user-agent", ({ headers }) => {
   const body = headers["User-Agent"];
