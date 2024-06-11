@@ -11,8 +11,9 @@ import {
 } from "./shared";
 import { TheHeaders } from "./headers";
 import { Encoder } from "./encoder";
-import { type ResponseBuilder, Router } from "./router";
+import { Router } from "./router";
 
+// Todo: Change this method, accept outgoing and socket, write partially response.
 const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
   const serializedHeaders = TheHeaders.serializeHeaders({
     ...(body && { "Content-Length": body.length.toString() }),
@@ -25,14 +26,14 @@ const buildResponse = (status: Status, headers?: Headers, body?: Body) => {
   };
 };
 
-const responseBuilder: ResponseBuilder = (outgoing) =>
+// Todo: Move callback inside the Router to just handle 404. Return outgoing.
+const router = new Router((outgoing) =>
   buildResponse(
     outgoing?.status ?? HTTP_STATUS.NOT_FOUND,
     outgoing?.headers,
     outgoing?.body
-  );
-
-const router = new Router(responseBuilder);
+  )
+);
 
 router.get("/echo/:echo", ({ request: { requestTarget }, headers }) => {
   const param = requestTarget.replace("/echo/", ""); // Todo: parse params & queries
@@ -107,111 +108,10 @@ router.any("/user-agent", ({ headers }) => {
 
 router.any("/", () => ({ status: HTTP_STATUS.OK }));
 
-// const createResponse = async ({
-//   request: { httpMethod, requestTarget },
-//   headers,
-//   body,
-// }: Incoming) => {
-//   if (requestTarget.startsWith("/echo/")) {
-//     const body = requestTarget.replace("/echo/", "");
-
-//     const encoding = headers["Accept-Encoding"]
-//       ?.split(", ")
-//       .filter((enc) => Encoder.isSupportedEncoding(enc))
-//       .at(0); // take first
-
-//     if (encoding) {
-//       const encodedBody = Encoder.encode(encoding, body);
-
-//       return buildResponse(
-//         HTTP_STATUS.OK,
-//         {
-//           "Content-Type": "text/plain",
-//           "Content-Encoding": encoding,
-//           "Content-Length": encodedBody.length.toString(),
-//         },
-//         encodedBody
-//       );
-//     }
-
-//     return buildResponse(
-//       HTTP_STATUS.OK,
-//       {
-//         "Content-Type": "text/plain",
-//         ...(encoding && { "Content-Encoding": encoding }),
-//       },
-//       body
-//     );
-//   }
-
-//   if (requestTarget.startsWith("/files/")) {
-//     const directory = process.argv.slice(2)[1] || "/tmp/";
-//     const fileName = requestTarget.replace("/files/", "");
-
-//     const filePath = `${directory}${fileName}`;
-
-//     switch (httpMethod) {
-//       case HTTP_METHOD.GET: {
-//         const fileExists = await fs
-//           .access(filePath)
-//           .then(() => true)
-//           .catch(() => false);
-
-//         if (!fileExists) {
-//           return buildResponse(HTTP_STATUS.NOT_FOUND);
-//         }
-
-//         const bytes = (await fs.stat(filePath)).size;
-//         const contents = await fs.readFile(filePath);
-
-//         return buildResponse(
-//           HTTP_STATUS.OK,
-//           {
-//             "Content-Type": "application/octet-stream",
-//             "Content-Length": bytes.toString(),
-//           },
-//           contents
-//         );
-//       }
-
-//       case HTTP_METHOD.POST: {
-//         await fs.writeFile(filePath, body);
-
-//         return buildResponse(HTTP_STATUS.CREATED);
-//       }
-
-//       default: {
-//         return buildResponse(HTTP_STATUS.NOT_FOUND);
-//       }
-//     }
-//   }
-
-//   switch (requestTarget) {
-//     case "/": {
-//       return buildResponse(HTTP_STATUS.OK);
-//     }
-
-//     case "/user-agent": {
-//       const userAgent = headers["User-Agent"];
-
-//       return buildResponse(
-//         HTTP_STATUS.OK,
-//         { "Content-Type": "text/plain" },
-//         userAgent
-//       );
-//     }
-
-//     default: {
-//       return buildResponse(HTTP_STATUS.NOT_FOUND);
-//     }
-//   }
-// };
-
 const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
     const { response, body } = await router.handle(incoming);
-    // const { response, body } = await createResponse(incoming);
 
     console.log({ incoming, response, body });
 

@@ -8,7 +8,7 @@ type Route = {
   handler: Handler;
 };
 
-export type ResponseBuilder = (outgoing?: Outgoing) => {
+type ResponseBuilder = (outgoing?: Outgoing) => {
   response: string;
   body?: Body;
 };
