@@ -1,29 +1,9 @@
 import * as net from "node:net";
 import fs from "node:fs/promises";
-import {
-  LINE_END,
-  HEADERS_END,
-  HTTP_STATUS,
-  parseData,
-  type Outgoing,
-} from "./shared";
-import { TheHeaders } from "./headers";
+import { HTTP_STATUS, parseData } from "./shared";
 import { Encoder } from "./encoder";
 import { Router } from "./router";
 import { Response } from "./response";
-
-// Todo: Change this method, accept outgoing and socket, write partially response.
-const buildResponse = ({ status, headers, body }: Outgoing) => {
-  const serializedHeaders = TheHeaders.serializeHeaders({
-    ...(body && { "Content-Length": body.length.toString() }),
-    ...headers,
-  });
-
-  return {
-    response: `${status}${LINE_END}${serializedHeaders}${HEADERS_END}`,
-    body,
-  };
-};
 
 const router = new Router();
 
@@ -101,24 +81,15 @@ const server = net.createServer((socket) => {
   socket.on("data", async (data) => {
     const incoming = parseData(data);
     const outgoing = await router.handle(incoming);
-    // const { response, body } = buildResponse(outgoing);
 
-    // console.log({ incoming }, { outgoing }, { response, body });
     console.log({ incoming }, { outgoing });
 
     new Response(outgoing).send(socket);
-
-    // socket.write(Buffer.from(response));
-    // if (body) socket.write(Buffer.from(body));
-    // socket.end();
   });
 
-  socket.on("connect", () => {
-    new Response({ status: HTTP_STATUS.OK }).send(socket);
-    // const { response, body } = buildResponse({ status: HTTP_STATUS.OK });
-    // socket.write(Buffer.from(response));
-    // if (body) socket.write(Buffer.from(body));
-  });
+  socket.on("connect", () =>
+    new Response({ status: HTTP_STATUS.OK }).send(socket)
+  );
 });
 
 console.log("Logs from your program will appear here!");
